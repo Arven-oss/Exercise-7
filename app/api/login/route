@@ -1,0 +1,37 @@
+import { NextRequest, NextResponse } from "next/server";
+import mysql from "mysql2/promise";
+
+const dbConfig = {
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
+};
+
+export async function POST(req: NextRequest) {
+  const { username, password } = await req.json();
+
+  if (!username || !password) {
+    return NextResponse.json({ success: false, message: "Missing credentials" });
+  }
+
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      "SELECT * FROM login WHERE username = ? AND password = ?",
+      [username, password]
+    );
+    await connection.end();
+
+    const users = rows as any[];
+
+    if (users.length === 0) {
+      return NextResponse.json({ success: false, message: "Invalid username or password" });
+    }
+
+    return NextResponse.json({ success: true, username: users[0].username });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ success: false, message: "Database error" });
+  }
+}
